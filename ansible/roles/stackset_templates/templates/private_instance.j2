@@ -75,15 +75,6 @@
                         "ToPort": "22",
                         "SourceSecurityGroupId": "{{ cage_provision_stack['stack_outputs']['BastionSecurityGroupId'] }}"
                     },
-		    {% for entry in rsandbox_cidr_whitelist_ingress_rules %}
-		    {% set outer_loop = loop %}
-		    {% for whitelist_cidr in NUCLEATOR_CAGE_CIDR_WHITELIST %}
-		    {
-			"CidrIp": "{{whitelist_cidr}}",
-			{{entry|to_json_fragment}}
-		    }{{"" if loop.last and outer_loop.last else ","}}
-		    {% endfor %}
-		    {% endfor %}
                 ],
                 "SecurityGroupEgress": [
                     {

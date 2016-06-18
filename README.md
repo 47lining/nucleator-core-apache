@@ -1,14 +1,10 @@
-Nucleator Rsandbox
+Nucleator Apache
 ==================
 
-Nucleator Rsandbox is a Nucleator stackset that provisions and configures a new general purpose development node with additions to support analytics in R.
+Nucleator Apache is a Nucleator stackset that provisions and configures a new singleton Apache instance in the specified Nucleator Cage.
 
-Rsandbox is a Nucleator Enterprise Stackset.  It is licensed by 47Lining independently from the Nucleator Core Stacksets.
-
-Rsandbox supports interactive development environemnts that benefit from remote graphical support.
-
-Rsandbox includes installation of R for local use within your AWS, often with high bandwidth connectivity to a Redshift Cluster residing in the same Nucleator Cage and AWS VPC.
+The apache instance is not autoscaling.  The stackset is intended as a template for development and deployment of ad-hoc instances within Nucleator Cages that you would like to mantain using infrastructure-as-code.
 
 To see the full list of supported options, use the command:
 
-> nucleator rsandbox --help
+> nucleator apache --help
