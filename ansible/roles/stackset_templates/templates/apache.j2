@@ -18,7 +18,7 @@
     "Mappings": {
         "AZMap": {{ aws_accounts[account_name]["map_region_plus_redundant_zone_number_to_vpc_valid_az"] | to_json }},
         "AWSInstanceType2Arch": {{ map_aws_instance_type_to_architecture|to_json }},
-        "AWSRegionArch2BastionAMI": {{ map_aws_region_plus_arch_to_public_bastion_ami|to_json }},
+        "AWSRegionArch2BastionAMI": {{ map_aws_region_plus_arch_to_public_bastion_ami|to_json }}
     },
     "Resources": {
         "ApacheInstance": {
@@ -26,7 +26,7 @@
             "Properties": {
                 "TemplateURL": "{{template_s3_accessor_url}}/{{stackset_instance_name}}public_instance.json",
                 "Parameters": {
-                    "PrivateInstanceName": "apache",
+                    "PublicInstanceName": "apache",
                     "NucleatorGroup": "apache",
                     "InstanceType": "{{ apache_instance_type }}",
                     "KeypairName": {
@@ -65,8 +65,7 @@
                     }
 		]
             }
-	},
-	{{ apache_cage_extension_resources | to_json_fragment }}
+	}
     },
     "Outputs": {
         "ApacheInstanceId": {
