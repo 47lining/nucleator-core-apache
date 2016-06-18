@@ -51,12 +51,51 @@
                 }
             }
         },
-	"ApacheInstanceDnsRecord": {
+        "ApacheIpAddress": {
+            "Type": "AWS::EC2::EIP",
+            "DependsOn": "AttachGateway",
+            "Properties": {
+                "Domain": "vpc"
+            }
+        },
+        "ApacheIpAssocation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "ApacheIpAddress",
+                        "AllocationId"
+                    ]
+                },
+                "InstanceId": {
+                    "Fn::GetAtt": [
+                        "ApacheInstance",
+                        "Outputs.InstanceId"
+                    ]
+                }
+            }
+        },
+        "ApacheDnsRecordPublic": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+                "HostedZoneName": "{{ cage_name }}.{{customer_domain}}.",
+                "Comment": "A record for Apache server public IP.",
+                "Name": "{{stackset_instance_name}}.{{cage_name}}.{{customer_domain}}",
+                "Type": "A",
+                "TTL": "300",
+                "ResourceRecords": [
+                    {
+                        "Ref": "ApacheIpAddress"
+                    }
+                ]
+            }
+        },
+	"ApacheDnsRecordPrivate": {
             "Type": "AWS::Route53::RecordSet",
             "Properties": {
 		"HostedZoneName": "{{ cage_name }}.{{customer_domain}}.",
 		"Comment": "A record for {{stackset_instance_name}} apache instance",
-		"Name": "{{stackset_instance_name}}.{{cage_name}}.{{customer_domain}}",
+		"Name": "{{stackset_instance_name}}private.{{cage_name}}.{{customer_domain}}",
 		"Type": "A",
 		"TTL": "300",
 		"ResourceRecords": [
