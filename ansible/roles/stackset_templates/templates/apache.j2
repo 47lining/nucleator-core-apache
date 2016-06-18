@@ -93,7 +93,7 @@
             "Type": "AWS::Route53::RecordSet",
             "Properties": {
 		"HostedZoneName": "{{ cage_name }}.{{customer_domain}}.",
-		"Comment": "A record for {{stackset_instance_name}} apache instance",
+		"Comment": "A record for {{stackset_instance_name}} apache instance private IP",
 		"Name": "{{stackset_instance_name}}private.{{cage_name}}.{{customer_domain}}",
 		"Type": "A",
 		"TTL": "300",
