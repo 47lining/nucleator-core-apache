@@ -70,7 +70,9 @@
 - hosts: MATCH_NUCLEATORGROUP__apache
   sudo: yes
   roles:
-  - role: maintain-apache-users
+    - common
+    - maintain-apache-users
+    - apache
 
 - hosts: MATCH_NUCLEATORGROUP__bastion
   sudo: yes
