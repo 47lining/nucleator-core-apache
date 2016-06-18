@@ -1,0 +1,187 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Provision a nucleator instance on the private subnet of an existing Cage.  ssh comms for the instance must transit the bastion instance in the Cage where the new instance is being provisioned.",
+    "Parameters": {
+        "PrivateInstanceName": {
+            "Description": "Name Tag Prefix for the instance",
+            "Type": "String"
+        },
+        "NucleatorGroup": {
+            "Description": "Name of the nucleator group that the instance should assume",
+            "Type": "String"
+        },
+        "InstanceType": {
+            "Description": "AWS EC2 Instance Type for the instance",
+            "Type": "String"
+        },
+        "KeypairName": {
+            "Description": "Name of and existing EC2 KeyPair to enable SSH access to the instance",
+            "Type": "String"
+        },
+        "ImageId": {
+            "Type": "String",
+            "Description": "AMI You want to use"
+        },
+        "ServiceRole": {
+            "Type": "CommaDelimitedList",
+            "Description": "String including comma-separated list of Role name(s) to use to establish an Instance Profile to associate with the instance"
+        }
+    },
+    "Resources": {
+        "PrivateSubnetInstance": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "{{template_s3_accessor_url}}/{{stackset_instance_name}}instance.json",
+                "Parameters": {
+                    "InstanceName": {
+			"Fn::Join": [
+			    ".",
+			    [
+				{ "Ref": "PrivateInstanceName" },
+				"{{cage_name}}",
+				"{{customer_domain}}"
+			    ]
+			]
+		    },
+                    "NucleatorGroup": { "Ref": "NucleatorGroup" },
+                    "InstanceType": {
+                        "Ref": "InstanceType"
+                    },
+                    "KeypairName": {
+                        "Ref": "KeypairName"
+                    },
+                    "ImageId": {
+			"Ref": "ImageId"
+		    },
+                    "ServiceRole": {
+			"Fn::Join" : [ ",", { "Ref" : "ServiceRole" }]
+		    },
+                    "SubnetId": "{{ cage_provision_stack['stack_outputs']['PrivateSubnet1Id'] }}",
+                    "SecurityGroupId": {
+                        "Ref": "PrivateSubnetSecurityGroup"
+                    }
+                }
+            }
+        },
+        "PrivateSubnetSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Enable ssh access to / from the PrivateSubnet host",
+                "VpcId": "{{ cage_provision_stack['stack_outputs']['VpcId'] }}",
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "SourceSecurityGroupId": "{{ cage_provision_stack['stack_outputs']['BastionSecurityGroupId'] }}"
+                    },
+		    {% for entry in rsandbox_cidr_whitelist_ingress_rules %}
+		    {% set outer_loop = loop %}
+		    {% for whitelist_cidr in NUCLEATOR_CAGE_CIDR_WHITELIST %}
+		    {
+			"CidrIp": "{{whitelist_cidr}}",
+			{{entry|to_json_fragment}}
+		    }{{"" if loop.last and outer_loop.last else ","}}
+		    {% endfor %}
+		    {% endfor %}
+                ],
+                "SecurityGroupEgress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "22",
+                        "ToPort": "22",
+                        "CidrIp": "{{ network_topology["vpc_cidr"] }}"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "80",
+                        "ToPort": "80",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "443",
+                        "ToPort": "443",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "udp",
+                        "FromPort": "53",
+                        "ToPort": "53",
+                        "CidrIp": "{{ network_topology["vpc_cidr"] }}"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "9418",
+                        "ToPort": "9418",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "5439",
+                        "ToPort": "5439",
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                ".",
+                                [
+				    "security",
+                                    { "Ref": "PrivateInstanceName" },
+				    "{{cage_name}}",
+				    "{{customer_name}}",
+                                    "unresolvable"
+                                ]
+                            ]
+                        }
+                    },
+		    { "Key": "NucleatorGroup", "Value": "networking" },
+		    {{ nucleator_common_tags | to_json_fragment }}
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "InstanceId": {
+            "Value": {
+                "Ref": "PrivateSubnetInstance"
+            },
+            "Description": "Instance Id of newly created instance"
+        }, 
+        "PrivateIp": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "PrivateSubnetInstance",
+                    "Outputs.PrivateIp"
+                ]
+            },
+            "Description": "Private IP of newly created instance"
+        },
+        "SubnetId": {
+	    "Value": "{{ cage_provision_stack['stack_outputs']['PrivateSubnet1Id'] }}",
+            "Description": "Subnet ID where the instance resides"
+        },
+        "AvailabilityZone": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "PrivateSubnetInstance",
+                    "Outputs.AvailabilityZone"
+                ]
+            },
+            "Description": "Availability Zone where the instance resides"
+        },
+        "PrivateSubnetSecurityGroupId": {
+            "Value": {
+                "Fn::GetAtt": [
+                    "PrivateSubnetInstance",
+                    "Outputs.SecurityGroupId"
+                ]
+            },
+            "Description": "Security Group of instance"
+        }
+    }
+}

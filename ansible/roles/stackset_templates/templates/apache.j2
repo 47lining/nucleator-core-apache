@@ -1,0 +1,91 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Provision a nucleator-apache stackset.  The stackset includes a singleton non-autoscaling apache instance.  The stackset is useful as a template to create ad-hoc worker instances that you want to mantain using infrastructure-as-code.  ssh comms for all instances must transit the bastion instance in the Cage where the Stackset is provisioned.",
+    "Parameters": {
+        "KeypairName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access via bastion to all resulting instances",
+            "Type": "String",
+            "MinLength": "1",
+            "MaxLength": "255",
+            "AllowedPattern": "[\\x20-\\x7E]*",
+            "ConstraintDescription": "can contain only ASCII characters."
+        },
+        "NucleatorAgentRole": {
+            "Type": "String",
+            "Description": "Name of the Role to use to establish an Instance Profile for assumption of NucleatorAgent Role"
+        }
+    },
+    "Mappings": {
+        "AZMap": {{ aws_accounts[account_name]["map_region_plus_redundant_zone_number_to_vpc_valid_az"] | to_json }},
+        "AWSInstanceType2Arch": {{ map_aws_instance_type_to_architecture|to_json }},
+        "AWSRegionArch2BastionAMI": {{ map_aws_region_plus_arch_to_public_bastion_ami|to_json }},
+    },
+    "Resources": {
+        "ApacheInstance": {
+            "Type": "AWS::CloudFormation::Stack",
+            "Properties": {
+                "TemplateURL": "{{template_s3_accessor_url}}/{{stackset_instance_name}}public_instance.json",
+                "Parameters": {
+                    "PrivateInstanceName": "apache",
+                    "NucleatorGroup": "apache",
+                    "InstanceType": "{{ apache_instance_type }}",
+                    "KeypairName": {
+                        "Ref": "KeypairName"
+                    },
+                    "ImageId": {
+                        "Fn::FindInMap": [
+                            "AWSRegionArch2BastionAMI",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            {
+                                "Fn::FindInMap": [
+                                    "AWSInstanceType2Arch",
+				    "{{ apache_instance_type }}",
+                                    "Arch"
+                                ]
+                            }
+                        ]
+                    },
+                    "ServiceRole": { "Ref": "NucleatorAgentRole" }
+                }
+            }
+        },
+	"ApacheInstanceDnsRecord": {
+            "Type": "AWS::Route53::RecordSet",
+            "Properties": {
+		"HostedZoneName": "{{ cage_name }}.{{customer_domain}}.",
+		"Comment": "A record for {{stackset_instance_name}} apache instance",
+		"Name": "{{stackset_instance_name}}.{{cage_name}}.{{customer_domain}}",
+		"Type": "A",
+		"TTL": "300",
+		"ResourceRecords": [
+                    {
+			"Fn::GetAtt": [ "ApacheInstance", "Outputs.PrivateIp" ]
+                    }
+		]
+            }
+	},
+	{{ apache_cage_extension_resources | to_json_fragment }}
+    },
+    "Outputs": {
+        "ApacheInstanceId": {
+	    "Description": "IP Address of the Apache instance",
+	    "Value": {
+	    	"Fn::GetAtt": [
+		    "ApacheInstance",
+		    "Outputs.InstanceId"
+                ]
+	    }
+        },
+        "ApacheSecurityGroupId": {
+	    "Description": "Security Group ID for the Apache Instance",
+	    "Value": {
+	    	"Fn::GetAtt": [
+		    "ApacheInstance",
+		    "Outputs.PrivateSubnetSecurityGroupId"
+                ]
+	    }
+        }
+    }
+}
