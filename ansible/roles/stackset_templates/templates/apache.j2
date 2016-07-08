@@ -26,7 +26,7 @@
             "Properties": {
                 "TemplateURL": "{{template_s3_accessor_url}}/{{stackset_instance_name}}public_instance.json",
                 "Parameters": {
-                    "PublicInstanceName": "apache",
+                    "PublicInstanceName": "{{stackset_instance_name}}",
                     "NucleatorGroup": "apache",
                     "InstanceType": "{{ apache_instance_type }}",
                     "KeypairName": {
